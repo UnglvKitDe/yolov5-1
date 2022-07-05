@@ -110,14 +110,23 @@ def compute_ap(recall, precision):
     mpre = np.flip(np.maximum.accumulate(np.flip(mpre)))
 
     # Integrate area under curve
-    method = 'interp'  # methods: 'continuous', 'interp'
+    method = 'new_coco'  # methods: 'continuous', 'interp', 'new_coco'
     if method == 'interp':
         x = np.linspace(0, 1, 101)  # 101-point interp (COCO)
         ap = np.trapz(np.interp(x, mrec, mpre), x)  # integrate
-    else:  # 'continuous'
+    elif method == 'continuous':
         i = np.where(mrec[1:] != mrec[:-1])[0]  # points where x axis (recall) changes
         ap = np.sum((mrec[i + 1] - mrec[i]) * mpre[i + 1])  # area under curve
-
+    else:  # 'new_coco'
+        # https://github.com/rafaelpadilla/review_object_detection_metrics/blob/main/src/evaluators/coco_evaluator.py
+        recall_thresholds = np.linspace(0.0,
+                                        1.00,
+                                        int(np.round((1.00 - 0.0) / 0.01)) + 1,
+                                        endpoint=True)
+        i_pr = np.maximum.accumulate(precision[::-1])[::-1]
+        rec_idx = np.searchsorted(recall, recall_thresholds, side="left")
+        i_pr = np.array([i_pr[r] if r < len(i_pr) else 0 for r in rec_idx])
+        ap = np.mean(i_pr)
     return ap, mpre, mrec
 
 
